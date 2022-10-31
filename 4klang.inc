@@ -604,22 +604,22 @@ section .data
 global _go4k_delay_times
 _go4k_delay_times
 	dw 0
-	dw 1116
-	dw 1188
-	dw 1276
-	dw 1356
-	dw 1422
-	dw 1492
-	dw 1556
-	dw 1618
-	dw 1140
-	dw 1212
-	dw 1300
-	dw 1380
-	dw 1446
-	dw 1516
-	dw 1580
-	dw 1642
-	dw 11025
-	dw 22050
+	dw 1116		; 25.3ms
+	dw 1188		; 26.9ms
+	dw 1276		; 28.9ms
+	dw 1356		; 30.7ms
+	dw 1422		; 32.2ms
+	dw 1492		; 33.8ms
+	dw 1556		; 35.3ms
+	dw 1618		; 36.7ms
+	dw 1140		; 25.9ms
+	dw 1212		; 27.5ms
+	dw 1300		; 29.5ms
+	dw 1380		; 31.3ms
+	dw 1446		; 32.8ms
+	dw 1516		; 34.4ms
+	dw 1580		; 35.8ms
+	dw 1642		; 37.2ms
+	dw 11025	; 250ms
+	dw 22050	; 500ms
 %endif

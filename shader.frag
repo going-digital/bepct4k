@@ -1,7 +1,6 @@
 uniform float t;
 
-float hash1(float f) { return fract(sin(f)*68354.452); }
-float hash2(vec2 v) { return hash1(dot(v, vec2(37.467,63.534))); } 
+float hash2(vec2 v) { return fract(sin(dot(v, vec2(37.467,63.534)))*68354.452); } 
 
 const vec3 E = vec3(.0, .001, 1.);
 
@@ -13,33 +12,39 @@ float noise2(vec2 v) {
         mix(hash2(V+E.xz), hash2(V+E.zz), v.x), v.y);
 }
 
-const float PI2 = 3.1415926 * 2.;
+const float PI = 3.1415926, PI2 = PI+PI;
 
 vec3 iqcolor(vec3 a, vec3 b, vec3 c, vec3 d, float t) {
     return a + b * cos(PI2 * (c + t * d));
 }
 
 vec3 c1(float t) {
-	return iqcolor(vec3(.5),
-                   vec3(.5),
-                   vec3(1.),
-                   vec3(0., 0.33, 0.67), t);
+	return iqcolor(
+        vec3(.5),
+        vec3(.5),
+        vec3(1.),
+        vec3(0., 0.33, 0.67),
+        t
+    );
 }
 
 vec3 rep3(vec3 p, vec3 s) {
     return mod(p, s) - s * .5;
 }
 
-float vmax(vec3 p) { return max(max(p.x, p.y), p.z); }
+float vmax(vec3 p) {
+    return max(max(p.x, p.y), p.z);
+}
 float box3(vec3 p, vec3 s) {
     return vmax(abs(p) - s);
 }
 
-mat2 Rm(float a) { float c=cos(a), s=sin(a); return mat2(c,s,-s,c); }
+mat2 Rm(float a) {
+    float c=cos(a), s=sin(a);
+    return mat2(c,s,-s,c);
+}
 
 mat2 bm;
-
-float PI = 3.1415926;
 
 float wball;
 float wgnd;
@@ -61,7 +66,7 @@ vec3 wn(vec3 p) {
         vec3(
             w(p+E.yxx), w(p+E.xyx), w(p+E.xxy)
         ) - w(p)
-    ); //xyzw rgba
+    );
 }
 
 void main() {
@@ -123,7 +128,7 @@ void main() {
     // Apply Gamma 2.0
     //gl_FragColor.rgb = sqrt(C);
 
-    // or Apply ACES Filmic (costs about 20 bytes extra)
+    // or Apply ACES Filmic (costs about 13 bytes extra)
     // Krysztof Narkowicz's curve fit
     // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
     gl_FragColor.rgb = (C * (C * 2.51 + .03)) / (C * (C * 2.43 + .59) + .14);

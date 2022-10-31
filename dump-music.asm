@@ -42,10 +42,22 @@ filename: db 'music.raw', 0
 
 section _text text align=1
 _start:
-	FNCALL __4klang_render@4, sound_buffer
-	FNCALL CreateFileA, filename, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0
-	push eax
-	FNCALL WriteFile, eax, sound_buffer, sound_buffer_end - sound_buffer, 0, 0
-	pop eax
-	FNCALL CloseHandle, eax
-	call ExitProcess
+	push	0
+	push	FILE_ATTRIBUTE_NORMAL
+	push	CREATE_ALWAYS
+	push	0
+	push	FILE_SHARE_READ
+	push	GENERIC_WRITE
+	push	filename
+	push	sound_buffer
+	FNCALL	__4klang_render@4
+	FNCALL	CreateFileA
+	push	eax
+	push	0
+	push	0
+	push	sound_buffer_end - sound_buffer
+	push	sound_buffer
+	push	eax
+	FNCALL	WriteFile
+	FNCALL 	CloseHandle
+	call 	ExitProcess
