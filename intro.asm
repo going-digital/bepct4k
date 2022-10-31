@@ -3,6 +3,9 @@ BITS 32
 WIDTH equ 1920
 HEIGHT equ 1080
 
+SIZEOF_FLOAT equ 4
+STEREO_CHANNELS equ 2
+
 %ifndef DEBUG
 %define FULLSCREEN
 %define AUDIO_THREAD
@@ -120,51 +123,101 @@ GL_FUNC glGetProgramInfoLog
 %ifdef FULLSCREEN
 section _devmode data align=1
 devmode:
-	times 9 dd 0
-	db 0x9c, 0, 0, 0
-	db 0, 0, 0x1c, 0
-	times 15 dd 0
-	DD	020H, WIDTH, HEIGHT
-	times 10 dd 0
+    ; DEVMODE structure
+    ; https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-devmodea
+    times 32 db 0   ; dmDeviceName
+    dw      0       ; dmSpecVersion
+    dw      0       ; dmDriverVersion
+    dw      0x9c    ; dmSize
+    dw      0       ; dmDriverExtra
+    dd      0x1c0000 ; dmFields
+    dd      0, 0    ; dmPosition
+    dd      0       ; dmDisplayOrientation
+    dd      0       ; dmDisplayFixedOutput
+    dw      0       ; dmColor
+    dw      0       ; dmDuplex
+    dw      0       ; dmYResolution
+    dw      0       ; dmTTOPtion
+    dw      0       ; dmCollate
+    times 32 db 0   ; dmFormName
+    dw      0       ; dmdmLogPixels
+    dd      0x20    ; dmBitsPerPel
+    dd      WIDTH   ; dmPelsWidth
+    dd      HEIGHT  ; dmPelsHeight
+    dd      0       ; dmDisplayFlags
+    dd      0       ; dmDisplayFrequency
+    dd      0       ; dmICMMethod
+    dd      0       ; dmICMIntent
+    dd      0       ; dmMediaType
+    dd      0       ; dmDitherType
+    dd      0       ; dmReserved1
+    dd      0       ; dmReserved2
+    dd      0       ; dmPanningWidth
+    dd      0       ; dmPanningHeight
 %endif
 
 section _pfd data align=1
 pfd:
-%if 0
-	DW	028H, 01H
-	DD	025H
-	DB	00H, 020H, 00H, 00H, 00H, 00H, 00H, 00H, 08H, 00H, 00H, 00H, 00H, 00H
-	DB	00H, 020H, 00H, 00H, 00H, 00H
-	DD	00H, 00H, 00H
-%else
-	DW	00H, 00H
-	DD	21H ;025H
-	DB	00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H
-	DB	00H, 00H, 00H, 00H, 00H, 00H
-	DD	00H, 00H, 00H
-%endif
+    ; PIXELFORMATDESCRIPTOR structure
+    ; https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-pixelformatdescriptor
+    dw      0       ; nSize should be sizeof(PIXELFORMATDESCRIPTOR) (0x28)
+    dw      0       ; nVersion should be 1 (0x01)
+    dd      0x21    ; dwFlags PFD_SUPPORT_OPENGL + PFD_DOUBLEBUFFER
+    db      0       ; iPixelType
+    db      0       ; cColorBits (0x20)
+    db      0       ; cRedBits
+    db      0       ; cRedShift
+    db      0       ; cGreenBits
+    db      0       ; cGreenShift
+    db      0       ; cBlueBits
+    db      0       ; cBlueShift
+    db      0       ; cAlphaBits
+    db      0       ; cAlphaShift
+    db      0       ; cAccumBits
+    db      0       ; cAccumRedBits
+    db      0       ; cAccumGreenBits
+    db      0       ; cAccumBlueBits
+    db      0       ; cAccumAlphaBits
+    db      0       ; cDepthBits (0x20)
+    db      0       ; cStencilBits
+    db      0       ; cAuxBuffers
+    db      0       ; iLayerType
+    db      0       ; bReserved
+    dd      0       ; dwLayerMask
+    dd      0       ; dwVisibleMask
+    dd      0       ; dmDamageMask
 
 section _wavefmt data align=1
 wavefmt:
-	dw 3 ; wFormatTag = WAVE_FORMAT_IEEE_FLOAT
-	dw 2 ; nChannels
-	dd SAMPLE_RATE ; nSamplesPerSec
-	dd SAMPLE_RATE * 4 * 2; nAvgBytesPerSec
-  dw 4 * 2 ; nBlockAlign
-  dw 8 * 4 ; wBitsPerSample
-  dw 0 ; cbSize
+    ; WAVEFORMATEX
+    ; https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/ns-mmeapi-waveformatex
+	dw		3 ; wFormatTag = WAVE_FORMAT_IEEE_FLOAT
+	dw		STEREO_CHANNELS ; nChannels
+	dd		SAMPLE_RATE ; nSamplesPerSec
+	dd		SAMPLE_RATE * SIZEOF_FLOAT * STEREO_CHANNELS; nAvgBytesPerSec
+	dw		SIZEOF_FLOAT * STEREO_CHANNELS ; nBlockAlign
+	dw		8 * SIZEOF_FLOAT ; wBitsPerSample
+	dw		0 ; cbSize
 
 section _wavehdr data align=1
 wavehdr:
-	dd sound_buffer ; lpData
-	dd MAX_SAMPLES * 2 * 4 ; dwBufferLength
-	times 2 dd 0 ; unused stuff
-	dd 2 ; dwFlags WHDR_PREPARED  =  0x00000002
-	times 4 dd 0 ; unused stuff
+	dd		sound_buffer ; lpData
+	dd		MAX_SAMPLES * STEREO_CHANNELS * SIZEOF_FLOAT ; dwBufferLength
+    dd      0       ; dwBytesRecorded
+    dd      0       ; dwUser
+	dd 		2 		; dwFlags WHDR_PREPARED  =  0x00000002
+    dd      0       ; dwLoops
+    dd      0       ; *lpNext
+    dd      0       ; reserved
 	wavehdr_size EQU ($ - wavehdr)
 
 section _mmtime bss align=1
-mmtime: resb 12
+mmtime:
+    resd    1       ; ms
+    resd    1       ; sample
+    resd    1       ; cb
+    resd    1       ; ticks
+    resb    8       ; smpte hour, min, sec, frame, fps, dummy, pad1, pad2
 
 section _waveout bss align=1
 waveout: resd 8
@@ -199,112 +252,153 @@ static_: db "static", 0
 
 section _text text align=1
 _start:
-%if 1
+%if 0
 	%define ZERO 0
 %else
 	%define ZERO ecx
-	xor ZERO, ZERO
+	xor 	ZERO, ZERO
 %endif
-
+	; Prepopulate stack for as much as possible
+	; This clusters the pushes, which helps the compressor.
+	push 	wavehdr_size
+	push 	wavehdr
+	push 	ZERO
+	push 	ZERO
+	push 	ZERO
+	push 	wavefmt
+	push 	byte -1
+	push 	waveout
+	push 	pfd
+	push 	pfd
+	push 	ZERO
+	push 	ZERO
+	push 	ZERO
+	push 	ZERO
+	push 	HEIGHT
+	push 	WIDTH
+	push 	ZERO
+	push 	ZERO
+	push 	0x90000000
+	push 	ZERO
+	push 	WNDCLASS
+	push 	ZERO
+	push 	ZERO
 %ifdef FULLSCREEN
-	FNCALL ChangeDisplaySettingsA, devmode, 4
+	push 	4
+	push 	devmode
 %endif
-
-	FNCALL ShowCursor, ZERO
-	FNCALL CreateWindowExA, ZERO, WNDCLASS, ZERO, 0x90000000, ZERO, ZERO, WIDTH, HEIGHT, ZERO, ZERO, ZERO, ZERO
-	FNCALL GetDC, eax
-	mov ebp, eax ; ebp = HDC
-	FNCALL ChoosePixelFormat, ebp, pfd
-	FNCALL SetPixelFormat, ebp, eax, pfd
-	FNCALL wglCreateContext, ebp
-	FNCALL wglMakeCurrent, ebp, eax
-	GLCHECK
-
 %ifndef NO_AUDIO
 %ifdef AUDIO_THREAD
-	FNCALL CreateThread, ZERO, ZERO, __4klang_render@4, sound_buffer, ZERO, ZERO
+	push 	ZERO
+	push 	ZERO
+	push 	sound_buffer
+	push	__4klang_render@4
+	push	ZERO
+	push	ZERO
+%endif
+%endif
+%ifndef NO_AUDIO
+%ifdef AUDIO_THREAD
+	FNCALL 	CreateThread
 %else
-	FNCALL __4klang_render@4, sound_buffer
+	push sound_buffer
+	FNCALL 	__4klang_render@4
 %endif
 %endif
-
-	FNCALL wglGetProcAddress, glCreateShaderProgramv
-	FNCALL eax, GL_FRAGMENT_SHADER, 1, src_main
+%ifdef FULLSCREEN
+	FNCALL 	ChangeDisplaySettingsA
+%endif
+	FNCALL 	ShowCursor
+	FNCALL 	CreateWindowExA
+	push 	eax
+	FNCALL 	GetDC
+	mov 	ebp, eax ; ebp = HDC
+	push 	eax
+	FNCALL 	ChoosePixelFormat
+	push 	eax
+	push 	ebp
+	FNCALL 	SetPixelFormat
+	push 	ebp
+	FNCALL 	wglCreateContext
+	push 	eax
+	push 	ebp
+	FNCALL 	wglMakeCurrent
+	GLCHECK
+	push 	src_main
+	push 	1
+	push 	GL_FRAGMENT_SHADER
+	push 	glCreateShaderProgramv
+	FNCALL 	wglGetProcAddress
+	FNCALL 	eax
 %ifdef DEBUG
-	push eax
-	push infolog
-	push 0
-	push 1023
-	push eax
-	FNCALL wglGetProcAddress, glGetProgramInfoLog
-	call eax
-	push 0
-	push infolog
-	push infolog
-	push 0
-	call MessageBoxA
-	pop eax
+	push 	eax
+	push 	infolog
+	push 	0
+	push 	1023
+	push 	eax
+	FNCALL 	wglGetProcAddress, glGetProgramInfoLog
+	call 	eax
+	push 	0
+	push 	infolog
+	push 	infolog
+	push 	0
+	call 	MessageBoxA
+	pop 	eax
 %endif
-	mov esi, eax
-	FNCALL wglGetProcAddress, glUseProgram
-	FNCALL eax, esi
+	mov 	esi, eax
+	FNCALL 	wglGetProcAddress, glUseProgram
+	FNCALL 	eax, esi
 	GLCHECK
 
 	; PLAY MUSIC
-	FNCALL waveOutOpen, waveout, byte -1, wavefmt, ZERO, ZERO, ZERO
-	FNCALL waveOutWrite, dword [waveout], wavehdr, wavehdr_size
+	FNCALL 	waveOutOpen
+	push 	dword [waveout]
+	FNCALL 	waveOutWrite
 
-	mainloop:
-	;mov ebx, esp
-	;mov dword [ebx], 4
-	FNCALL waveOutGetPosition, dword [waveout], mmtime, 12
-	mov ebx, dword [mmtime + 4]
-	cmp ebx, MAX_SAMPLES * 8
-	jge exit
+mainloop:
+	FNCALL 	waveOutGetPosition, dword [waveout], mmtime, 12
+	mov 	ebx, dword [mmtime + 4]
+	cmp 	ebx, MAX_SAMPLES * 8
+	jge 	exit
 
-	push 01bH ;GetAsyncKeyState
+	push 	0x1b ;GetAsyncKeyState
 
 	; PeekMessageA
-	push 1
-	push 0
-	push 0
-	push 0
-	push 0
+	push 	1
+	push 	ZERO
+	push 	ZERO
+	push 	ZERO
+	push 	ZERO
 
 	; SwapBuffers
-	push ebp
+	push 	ebp
 
 	; glRects
-	push 1
-	push 1
-	push byte -1
-	push byte -1
+	push 	1
+	push 	1
+	push 	byte -1
+	push 	byte -1
 
-	push ebx
-	fild dword [esp]
-	push SAMPLES_PER_TICK * 8 * 4
-	fild dword [esp]
-	;mov dword [esp], SAMPLES_PER_TICK * 8 * 4
-	;fidiv dword [esp]
+	push 	ebx
+	fild 	dword [esp]
+	push 	SAMPLES_PER_TICK * 8 * 4
+	fild 	dword [esp]
 	fdivp
-	pop ebx
-	fstp dword [esp]
-	push _var_T
-	push esi
-	push glGetUniformLocation
-
-	call wglGetProcAddress
-	call eax
-	push eax
-	push glUniform1f
-	call wglGetProcAddress
-	call eax
-
-	call glRects
-
-	call SwapBuffers
-	call PeekMessageA
-	call GetAsyncKeyState
-	jz mainloop
+	pop 	ebx
+	fstp 	dword [esp]
+	push 	_var_T
+	push 	esi
+	push 	glGetUniformLocation
+	call 	wglGetProcAddress
+	call 	eax
+	push 	eax
+	push 	glUniform1f
+	call 	wglGetProcAddress
+	call 	eax
+	call 	glRects
+	call 	SwapBuffers
+	call 	PeekMessageA
+	call 	GetAsyncKeyState
+	jz		mainloop
 exit:
-	call ExitProcess
+	call 	ExitProcess
