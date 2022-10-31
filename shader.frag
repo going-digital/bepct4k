@@ -20,10 +20,10 @@ vec3 iqcolor(vec3 a, vec3 b, vec3 c, vec3 d, float t) {
 }
 
 vec3 c1(float t) {
-	return iqcolor(vec3(0.5, 0.5, 0.5),
-                   vec3(0.5, 0.5, 0.5),
-                   vec3(1.0, 1.0, 1.0),
-                   vec3(0.00, 0.33, 0.67), t);
+	return iqcolor(vec3(.5),
+                   vec3(.5),
+                   vec3(1.),
+                   vec3(0., 0.33, 0.67), t);
 }
 
 vec3 rep3(vec3 p, vec3 s) {
@@ -48,30 +48,25 @@ float w(vec3 p) {
     bp.xz *= bm;
     bp.yz *= bm;
     float box = box3(bp, vec3(.5));
-		float phase = t/8., ph = fract(phase) ;
-		phase = floor(phase) + mix(ph, ph * ph, step(32., t));
+    float phase = t/8., ph = fract(phase);
+    phase = floor(phase) + mix(ph, ph * ph, step(32., t));
     wball = length(rep3(p, vec3(.4 + .1*sin(phase * PI * 2.)))) - .15;
     float h = noise2(p.xz) + .25 * noise2(p.xz*2.3+vec2(t));
     wgnd = p.y + .5 + h*h;
-    //max(ball, p.y - .8 * sin(t))
     return min(max(wball, box), wgnd);
 }
 
 vec3 wn(vec3 p) {
-    return normalize(vec3(
-        w(p+E.yxx), w(p+E.xyx), w(p+E.xxy)) - w(p)); //xyzw rgba
+    return normalize(
+        vec3(
+            w(p+E.yxx), w(p+E.xyx), w(p+E.xxy)
+        ) - w(p)
+    ); //xyzw rgba
 }
 
-//void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
 void main() {
-    // Normalized pixel coordinates (from 0 to 1)
-		vec2 iResolution = vec2(1920., 1080.);
-    vec2 uv = gl_FragCoord.xy/iResolution.xy - .5;
-    uv.x *= iResolution.x / iResolution.y;
+    vec2 uv = (gl_FragCoord.xy-vec2(960,540))/1080.;
     
-    //fragColor = vec4(noise2(uv*5.)); return;
-    
-    //t = iTime;
     bm = Rm(t/4.);
 
 	vec3 skycolor = vec3(.4, .7, .9);
@@ -99,20 +94,20 @@ void main() {
         vec3 alb = vec3(1.);
         
         if (d == wgnd) {
-            alb = c1(P.y-3.);//vec3(.5, .8, .6);
+            alb = c1(P.y - 3.);
         }
         
         vec3 N = wn(P);
         
-        //vec3 sundir = normalize(vec3(sin(t), 1., cos(t)));
-        vec3 sundir = normalize(vec3(1.));//sin(t), 1., cos(t)));
+        vec3 sundir = normalize(vec3(1.));
        	vec3 h = normalize(sundir-D);
 
         vec3 suncolor = vec3(.9, .8, .5);
         vec3 mc = vec3(1.) * suncolor;
         
         vec3 c = suncolor * alb * (
-           max(0., dot(N, sundir)) + pow(max(0., dot(N, h)), spec));
+           max(0., dot(N, sundir)) + pow(max(0., dot(N, h)), spec)
+        );
         
         c += alb * skycolor * max(N.y, 0.);
         c += 2. * float(i/Ni);
@@ -120,8 +115,17 @@ void main() {
         C = mix(C, c, smoothstep(L, L*.5, l));
     }
 
-		C *= pow(smoothstep(0., 32., t), 2.);
+    // Fade in
+    C *= pow(smoothstep(0., 32., t), 2.);
 
     // Output to screen
-    gl_FragColor = vec4(sqrt(C), .0);
+
+    // Apply Gamma 2.0
+    //gl_FragColor.rgb = sqrt(C);
+
+    // or Apply ACES Filmic (costs about 20 bytes extra)
+    // Krysztof Narkowicz's curve fit
+    // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+    gl_FragColor.rgb = (C * (C * 2.51 + .03)) / (C * (C * 2.43 + .59) + .14);
+
 }
