@@ -29,6 +29,8 @@ def waveshaper(x, a):
 def svf(data, f0, fs, q):
     # Trapesium optimised state variable filter
     # https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+    # Low and High pass responses have been modified so low + high has unity
+    # response. This allows perfect reconstruction from filter bank. 
     g = np.tan(np.pi * f0 / fs)
     k = 1/q
     a1 = 1/(1+g*(g+k))
@@ -50,9 +52,11 @@ def svf(data, f0, fs, q):
         v2 = ic2eq + a2 * ic1eq + a3 * v3
         ic1eq = 2 * v1 - ic1eq
         ic2eq = 2 * v2 - ic2eq
-        out_low[i] = v2
+        #out_low[i] = v2
+        out_low[i] = v2 - 0.5 * k * v1
         #out_band[i] = v1
-        out_high[i] = v0 - k * v1 - v2
+        #out_high[i] = v0 - k * v1 - v2
+        out_high[i] = v0 - 1.5 * k * v1 - v2
         #out_notch[i] = v0 - k * v1
         #out_peak[i] = v0 - k * v1 - 2 * v2
         out_all[i] = v0 - 2 * k * v1
@@ -64,9 +68,12 @@ def svf(data, f0, fs, q):
         #'peak': out_peak,
         'all': out_all,
     }
+
 def svf_bandsplit(data, f0, fs, q):
     # Trapesium optimised state variable filter
     # https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+    # Low and High pass responses have been modified so low + high has unity
+    # response. This allows perfect reconstruction from filter bank. 
     g = np.tan(np.pi * f0 / fs)
     k = 1/q
     a1 = 1/(1+g*(g+k))
@@ -84,8 +91,8 @@ def svf_bandsplit(data, f0, fs, q):
         v2 = ic2eq + a2 * ic1eq + a3 * v3
         ic1eq = 2 * v1 - ic1eq
         ic2eq = 2 * v2 - ic2eq
-        out_low[i] = v2
-        out_high[i] = v0 - k * v1 - v2
+        out_low[i] = v2 - 0.5 * k * v1
+        out_high[i] = v0 - 1.5 * k * v1 - v2
     return [out_low, out_high]
 
 def svf_allpass(data, f0, fs, q):
@@ -140,14 +147,14 @@ def exciter(data, f, bw, fs, comp_a, comp_d, comp_t, comp_r, dist, gain):
         )
     return data_out
 
-"""
+
 data_b, data_l, data_m, data_h = fourband(data, (150, 500, 2000), (2,2,2), fs=f.samplerate)
 sf.write('test0.wav', data_b, f.samplerate)
 sf.write('test1.wav', data_l, f.samplerate)
 sf.write('test2.wav', data_m, f.samplerate)
 sf.write('test3.wav', data_h, f.samplerate)
 sf.write('testA.wav', data_b+data_l+data_m+data_h, f.samplerate)
-"""
+
 data_excited = exciter(
     data,
     (250, 800, 2000), # Band split frequencies
