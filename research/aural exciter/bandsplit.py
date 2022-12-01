@@ -130,12 +130,12 @@ def fourband(data, f, q, fs):
         )
     ]
 
-def exciter(data, f, bw, fs, comp_a, comp_d, comp_t, comp_r, dist, gain):
+def exciter(data, f, bw, fs, comp_a, comp_d, comp_t, comp_r, dist, gain, mix):
     # Split into four frequency bands
     data_bands = fourband(data, f, bw, fs)
-    data_out = np.zeros_like(data)
+    exciter_out = np.zeros_like(data)
     for i in range(4):
-        data_out += waveshaper(
+        exciter_out += waveshaper(
             gain[i] * compressor(
                 data_bands[i],
                 comp_a[i],
@@ -145,16 +145,17 @@ def exciter(data, f, bw, fs, comp_a, comp_d, comp_t, comp_r, dist, gain):
             ),
             dist[i]
         )
-    return data_out
+    pass_through = data_bands[0] + data_bands[1] + data_bands[2] + data_bands[3]
+    return pass_through + mix * (exciter_out - pass_through)
 
-
+"""
 data_b, data_l, data_m, data_h = fourband(data, (150, 500, 2000), (2,2,2), fs=f.samplerate)
 sf.write('test0.wav', data_b, f.samplerate)
 sf.write('test1.wav', data_l, f.samplerate)
 sf.write('test2.wav', data_m, f.samplerate)
 sf.write('test3.wav', data_h, f.samplerate)
 sf.write('testA.wav', data_b+data_l+data_m+data_h, f.samplerate)
-
+"""
 data_excited = exciter(
     data,
     (250, 800, 2000), # Band split frequencies
@@ -165,6 +166,7 @@ data_excited = exciter(
     (0.1, 0.1, 0.1, 0.1), # Compressor threshold
     (2, 1.5, 2, 2), # Compression ratio
     (0.1, 0., 0.2, 0.2), # Distortion
-    (3, 3, 3, 2) # Band gain
+    (3, 3, 3, 2), # Band gain
+    0.3 # Mix
 )
 sf.write('testE.wav', data_excited, f.samplerate)
